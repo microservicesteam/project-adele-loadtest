@@ -13,9 +13,12 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <encoding>UTF-8</encoding>
+        <scala.version>2.12.3</scala.version>
+        <scala.compat.version>2.12.3</scala.compat.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <gatling.version>2.3.0</gatling.version>
-        <gatling-plugin.version>2.3.0</gatling-plugin.version>
+        <gatling-plugin.version>2.2.4</gatling-plugin.version>
         <scala-maven-plugin.version>3.2.2</scala-maven-plugin.version>
     </properties>
 
