@@ -3,7 +3,13 @@ package adele
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
+import scala.util.Random
+
 class DefaultBookingSimulation extends Simulation {
+
+    private final val MinimumNumberOfBookedTickets = 2
+    private final val MaximumNumberOfBookedTickets = 10
+    private final val SectorSize = 250
 
     val httpConf = http
             .baseURL("http://localhost:8080")
@@ -12,7 +18,12 @@ class DefaultBookingSimulation extends Simulation {
             .acceptLanguageHeader("en-US,en;q=0.5")
             .userAgentHeader("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:16.0) Gecko/20100101 Firefox/16.0")
 
+    val positionFeeder = Iterator.continually(
+        Map("POSITIONS" -> generatePositions().mkString(","))
+    )
+
     val scn = scenario("Default Booking Scenario")
+            .feed(positionFeeder)
             // Home Page
             .exec(http("get_events").get("/rs/api/events"))
             .pause(5)
@@ -26,7 +37,20 @@ class DefaultBookingSimulation extends Simulation {
             // Book selected tickets
             .exec(http("booking_request")
                     .post("/bookings")
-                    .body(StringBody("""{"eventId": 1, "sectorId": 1, "positions": [1, 2, 3, 4, 5]}""")).asJSON)
+                    .body(StringBody("""{"eventId": 1, "sectorId": 1, "positions": [${POSITIONS}]}""")).asJSON)
 
-    setUp(scn.inject(atOnceUsers(1)).protocols(httpConf))
+    setUp(scn.inject(atOnceUsers(10)).protocols(httpConf))
+
+    /**
+      * Returns a random range of positions based on the minimum and maximum number of tickets to be booked
+      * e.g.: Range(5, 6, 7, 8)
+      */
+    def generatePositions(): Range = {
+        val r = Random
+        val numberOfTickets = math.max(MinimumNumberOfBookedTickets, r.nextInt(MaximumNumberOfBookedTickets + 1))
+        val startingPosition = r.nextInt(SectorSize - numberOfTickets + 1)
+        val endPosition = startingPosition + numberOfTickets - 1
+        startingPosition to endPosition
+    }
+
 }
