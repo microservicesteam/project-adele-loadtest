@@ -7,23 +7,29 @@ import scala.util.Random
 
 class DefaultBookingSimulation extends Simulation {
 
+    private final val BaseUrl = "http://localhost:8080"
+
     private final val MinimumNumberOfBookedTickets = 2
     private final val MaximumNumberOfBookedTickets = 10
+    private final val NumberOfSectors = 3
     private final val SectorSize = 250
 
     val httpConf = http
-            .baseURL("http://localhost:8080")
+            .baseURL(BaseUrl)
             .acceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .acceptEncodingHeader("gzip, deflate")
             .acceptLanguageHeader("en-US,en;q=0.5")
             .userAgentHeader("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:16.0) Gecko/20100101 Firefox/16.0")
 
-    val positionFeeder = Iterator.continually(
-        Map("POSITIONS" -> generatePositions().mkString(","))
+    val feeder = Iterator.continually(
+        Map(
+            "SECTOR" -> generateSector(),
+            "POSITIONS" -> generatePositions().mkString(",")
+        )
     )
 
     val scn = scenario("Default Booking Scenario")
-            .feed(positionFeeder)
+            .feed(feeder)
             // Home Page
             .exec(http("get_events").get("/rs/api/events"))
             .pause(5)
@@ -37,9 +43,13 @@ class DefaultBookingSimulation extends Simulation {
             // Book selected tickets
             .exec(http("booking_request")
                     .post("/bookings")
-                    .body(StringBody("""{"eventId": 1, "sectorId": 1, "positions": [${POSITIONS}]}""")).asJSON)
+                    .body(StringBody("""{"eventId": 1, "sectorId": ${SECTOR}, "positions": [${POSITIONS}]}""")).asJSON)
 
-    setUp(scn.inject(atOnceUsers(10)).protocols(httpConf))
+    setUp(scn.inject(atOnceUsers(200)).protocols(httpConf))
+
+    def generateSector(): Int = {
+        Random.nextInt(NumberOfSectors) + 1
+    }
 
     /**
       * Returns a random range of positions based on the minimum and maximum number of tickets to be booked
