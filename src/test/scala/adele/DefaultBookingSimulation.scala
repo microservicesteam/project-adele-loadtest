@@ -3,6 +3,8 @@ package adele
 import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 
+import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 import scala.util.Random
 
 class DefaultBookingSimulation extends Simulation {
@@ -11,7 +13,7 @@ class DefaultBookingSimulation extends Simulation {
 
     private final val MinimumNumberOfBookedTickets = 2
     private final val MaximumNumberOfBookedTickets = 10
-    private final val NumberOfSectors = 3
+    private final val NumberOfSectors = 50
     private final val SectorSize = 250
 
     val httpConf = http
@@ -45,7 +47,7 @@ class DefaultBookingSimulation extends Simulation {
                     .post("/bookings")
                     .body(StringBody("""{"eventId": 1, "sectorId": ${SECTOR}, "positions": [${POSITIONS}]}""")).asJSON)
 
-    setUp(scn.inject(atOnceUsers(200)).protocols(httpConf))
+    setUp(scn.inject(rampUsers(2000) over new DurationInt(2).minutes).protocols(httpConf))
 
     def generateSector(): Int = {
         Random.nextInt(NumberOfSectors) + 1
