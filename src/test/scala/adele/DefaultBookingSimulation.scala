@@ -17,6 +17,8 @@ class DefaultBookingSimulation extends Simulation {
     private final val SectorSize = 250
 
     val httpConf = http
+            .disableWarmUp // no GET request for http://gatling.io in the beginning
+            .perUserNameResolution // needed if additional instances are added during load test
             .baseURL(BaseUrl)
             .acceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .acceptEncodingHeader("gzip, deflate")
@@ -30,7 +32,7 @@ class DefaultBookingSimulation extends Simulation {
         )
     )
 
-    val scn = scenario("Default Booking Scenario")
+    val defaultBooking = scenario("Default Booking Scenario")
             .feed(feeder)
             // Home Page
             .exec(http("get_events").get("/rs/api/events"))
@@ -47,7 +49,12 @@ class DefaultBookingSimulation extends Simulation {
                     .post("/bookings")
                     .body(StringBody("""{"eventId": 1, "sectorId": ${SECTOR}, "positions": [${POSITIONS}]}""")).asJSON)
 
-    setUp(scn.inject(rampUsers(2000) over new DurationInt(2).minutes).protocols(httpConf))
+    setUp(
+        defaultBooking.inject(rampUsers(1000) over new DurationInt(1).minutes).protocols(httpConf)
+    ).assertions(
+        global.responseTime.max.lt(800),
+        global.successfulRequests.percent.is(100)
+    )
 
     def generateSector(): Int = {
         Random.nextInt(NumberOfSectors) + 1
