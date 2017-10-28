@@ -12,7 +12,7 @@ class DefaultBookingSimulation extends Simulation {
     private final val BaseUrl = "http://localhost:8080"
 
     private final val MinimumNumberOfBookedTickets = 2
-    private final val MaximumNumberOfBookedTickets = 10
+    private final val MaximumNumberOfBookedTickets = 5
     private final val NumberOfSectors = 50
     private final val SectorSize = 250
 
@@ -34,20 +34,41 @@ class DefaultBookingSimulation extends Simulation {
 
     val defaultBooking = scenario("Default Booking Scenario")
             .feed(feeder)
+
             // Home Page
             .exec(http("get_events").get("/rs/api/events"))
             .pause(5)
+
             // First Event selected
-            // TODO WS connection
-            .exec(http("get_events").get("/rs/api/events"))
-            .exec(http("get_venue").get("/rs/api/events/1/venue"))
-            .exec(http("get_sectors").get("/rs/api/venues/1/sectors"))
-            .exec(http("get_bookings").get("/bookings?eventId=1"))
+            .exec(ws("WS Open")
+                .open("ws://localhost:8080/ws"))
+            .pause(1)
+            .exec(ws("WS Send connect")
+                    .sendText(Stomp.StompConnect)
+                    .check(Stomp.StompConnectCheck))
+            .pause(1)
+            .exec(ws("WS Send subscribe")
+                    .sendText(Stomp.StompSubscribe))
+
+            .exec(http("HTTP get_events").get("/rs/api/events"))
+            .exec(http("HTTP get_venue").get("/rs/api/events/1/venue"))
+            .exec(http("HTTP get_sectors").get("/rs/api/venues/1/sectors"))
+            .exec(http("HTTP get_bookings").get("/bookings?eventId=1"))
             .pause(10)
+
             // Book selected tickets
-            .exec(http("booking_request")
+            // todo repeat until session has bookingId
+            .exec(http("HTTP booking_request")
                     .post("/bookings")
-                    .body(StringBody("""{"eventId": 1, "sectorId": ${SECTOR}, "positions": [${POSITIONS}]}""")).asJSON)
+                    .body(StringBody("""{"eventId": 1, "sectorId": ${SECTOR}, "positions": [${POSITIONS}]}""")).asJSON
+                    .check(jsonPath("$.bookingId").optional.saveAs("bookingId")))
+            .pause(5)
+
+            // TODO listen to WS Message (current version does not support it)
+
+            .exec(ws("WS Close").close)
+
+            // Pay the tickets
 
     setUp(
         defaultBooking.inject(rampUsers(1000) over new DurationInt(1).minutes).protocols(httpConf)
