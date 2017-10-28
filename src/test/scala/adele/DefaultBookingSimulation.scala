@@ -12,7 +12,8 @@ class DefaultBookingSimulation extends Simulation {
 
     private final val Random = new Random(1)
 
-    private final val BaseUrl = "http://localhost:8080"
+    private final val HttpBaseUrl = "http://localhost:8080"
+    private final val WsBaseUrl = "ws://localhost:8080/ws"
 
     private final val MinimumNumberOfBookedTickets = 2
     private final val MaximumNumberOfBookedTickets = 5
@@ -26,7 +27,7 @@ class DefaultBookingSimulation extends Simulation {
     val httpConf = http
             .disableWarmUp // no GET request for http://gatling.io in the beginning
             .perUserNameResolution // needed if additional instances are added during load test
-            .baseURL(BaseUrl)
+            .baseURL(HttpBaseUrl)
             .acceptHeader("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .acceptEncodingHeader("gzip, deflate")
             .acceptLanguageHeader("en-US,en;q=0.5")
@@ -42,12 +43,12 @@ class DefaultBookingSimulation extends Simulation {
             .feed(feeder)
 
             // Home Page
-            .exec(http("get_events").get("/rs/api/events"))
+            .exec(http("HTTP get_events").get("/rs/api/events"))
             .pause(5)
 
             // First Event selected
             .exec(ws("WS Open")
-                .open("ws://localhost:8080/ws"))
+                .open(WsBaseUrl))
             .pause(1)
             .exec(ws("WS Send connect")
                     .sendText(Stomp.StompConnect)
@@ -63,7 +64,6 @@ class DefaultBookingSimulation extends Simulation {
             .pause(10)
 
             // Book selected tickets
-            // todo repeat until session has bookingId
             .exec(http("HTTP booking_request")
                     .post("/bookings")
                     .body(StringBody("""${REQUEST}""")).asJSON
